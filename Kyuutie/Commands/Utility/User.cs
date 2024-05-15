@@ -16,10 +16,7 @@ public class User
         [Parameter("user")]
         [Description("The user to get the avatar from")] DiscordUser? user = null)
     {
-        if (user is null)
-        {
-            user = ctx.User;
-        }
+        user ??= ctx.User;
 
         DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
             .WithColor(DiscordColor.Magenta)

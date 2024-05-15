@@ -38,7 +38,7 @@ namespace Kyuutie.api.twitch
         public async Task<SearchChannels> SearchChannelsAsync(string channelName)
         {
             SearchChannelsResponse response = JsonConvert.DeserializeObject <SearchChannelsResponse> (await MakeRequestAsync($"search/channels?query={channelName.ToLower()}", HttpMethod.Get))!;
-            if(response != null)
+            if(response is not null)
             {
                 foreach(SearchChannels channel in response.data) 
                 {
