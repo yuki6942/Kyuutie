@@ -55,7 +55,7 @@ namespace Kyuutie
 
             foreach ((int _, CommandsExtension commandsExtension) in command)
             {
-                commandsExtension.AddCommands(Assembly.GetExecutingAssembly(), 1166029845755609198);
+                commandsExtension.AddCommands(Assembly.GetExecutingAssembly(), 1128276411845726282);
                 commandsExtension.CommandErrored += kyuutieEventHandler.OnErrorAsync;
 
             }
