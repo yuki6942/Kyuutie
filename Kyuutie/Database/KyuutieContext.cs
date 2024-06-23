@@ -6,4 +6,5 @@ public class KyuutieContext : DbContext
 {
     public KyuutieContext(DbContextOptions<KyuutieContext> options) : base(options)
     { }
+    
 }

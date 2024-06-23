@@ -29,7 +29,7 @@ namespace Kyuutie.api.twitch
                 };
                 HttpResponseMessage response = this._client.SendAsync(request).Result;
                 return response.Content.ReadAsStringAsync().Result; 
-            }catch(Exception ex)
+            } catch(Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
@@ -53,30 +53,24 @@ namespace Kyuutie.api.twitch
         }
         
 
-        public async Task<ChannelInformation> GetChannelInformationAsync(string channelId)
+        public async Task<ChannelInformation?> GetChannelInformationAsync(string channelId)
         {
-            ChannelInformationRespone response = JsonConvert.DeserializeObject<ChannelInformationRespone>(await MakeRequestAsync($"channels?broadcaster_id={channelId}", HttpMethod.Get));
-            return response.data[0];
-        }
-        
-
-        public async Task<bool> SetChannelInformationAsync(string channelId, ChannelInformationModify information)
-        {
-            string response = await MakeRequestAsync($"channels?broadcaster_id={channelId}", HttpMethod.Patch, JsonConvert.SerializeObject(information));
-            return response != null; 
+            ChannelInformationResponse? response = JsonConvert.DeserializeObject<ChannelInformationResponse>(await MakeRequestAsync($"channels?broadcaster_id={channelId}", HttpMethod.Get));
+            return response?.data[0];
         }
         
         
     }
-
-    internal class ChannelInformationRespone
+    
+    // ReSharper disable InconsistentNaming
+    internal class ChannelInformationResponse
     {
-        // ReSharper disable once InconsistentNaming
-        public List<ChannelInformation> data { get; set; }
+
+        public List<ChannelInformation?> data { get; set; }
     }
     public class ChannelInformation
     {
-        // ReSharper disable InconsistentNaming
+
         public string broadcaster_id { get; set; }
         public string broadcaster_login { get; set; }
         public string broadcaster_name { get; set; }
@@ -85,12 +79,6 @@ namespace Kyuutie.api.twitch
         public string game_name { get; set; }
         public string title { get; set; }
         public int delay { get; set; }
-    }
-    public class ChannelInformationModify
-    {
-        public string game_id { get; set; }
-        public string broadcaster_language { get; set; }
-        public string title { get; set; }
     }
     internal class SearchChannelsResponse
     {

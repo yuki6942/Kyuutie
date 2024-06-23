@@ -1,11 +1,17 @@
-﻿using DSharpPlus;
+﻿using System;
+using System.Collections.Generic;
+using DSharpPlus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Kyuutie.Database;
 using Kyuutie.Events;
 using System.Reflection;
+using System.Threading.Tasks;
 using DSharpPlus.Commands;
+using DSharpPlus.Commands.Processors.SlashCommands;
+using DSharpPlus.Interactivity;
+using DSharpPlus.Interactivity.Extensions;
 
 namespace Kyuutie
 {
@@ -35,6 +41,11 @@ namespace Kyuutie
                 AutoReconnect = true
             });
 
+            await client.UseInteractivityAsync(new InteractivityConfiguration()
+            {
+                Timeout = TimeSpan.FromSeconds(120)
+            });
+
             ServiceCollection collection = new();
             collection.AddDbContextPool<KyuutieContext>(db =>
                 db.UseNpgsql(config["DB_STRING"]));
@@ -44,20 +55,22 @@ namespace Kyuutie
                 await client.UseCommandsAsync(
                     new CommandsConfiguration()
                     {
-                        ServiceProvider = services
+                        ServiceProvider = services,
+                        RegisterDefaultCommandProcessors = false
                     }
                 );
             _services = services;
             
             
-
-            KyuutieEventHandler kyuutieEventHandler = new(services, client, config);
-
+            KyuutieEventHandler kyuutieEventHandler = new(client, config);
+            
             foreach ((int _, CommandsExtension commandsExtension) in command)
             {
-                commandsExtension.AddCommands(Assembly.GetExecutingAssembly(), 1166029845755609198);
-                commandsExtension.CommandErrored += kyuutieEventHandler.OnErrorAsync;
+                
+                commandsExtension.AddCommands(Assembly.GetExecutingAssembly(), 1128276411845726282);
+                SlashCommandProcessor slashCommandProcessor = new();
 
+                await commandsExtension.AddProcessorsAsync(slashCommandProcessor);
             }
 
             await client.StartAsync();

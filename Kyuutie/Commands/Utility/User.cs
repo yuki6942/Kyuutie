@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
+using System.Threading.Tasks;
 using DSharpPlus.Commands;
 using DSharpPlus.Entities;
 
@@ -8,9 +9,9 @@ namespace Kyuutie.Commands.Utility;
 [Description("User related commands")]
 public class User
 {
+    
     [Command("avatar")]
     [Description("Get a user's avatar")]
-    
     public async Task AvatarCommandAsync(
         CommandContext ctx,
         [Parameter("user")]
@@ -31,6 +32,6 @@ public class User
                 "Open in Browser"));
 
         await ctx.RespondAsync(builder);
-        
     }
+    
 }

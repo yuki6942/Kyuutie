@@ -1,71 +1,72 @@
-﻿using DSharpPlus;
-using DSharpPlus.Commands;
-using DSharpPlus.Commands.EventArgs;
-using DSharpPlus.Commands.Exceptions;
+﻿using System;
+using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using Kyuutie.api.twitch;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Kyuutie.Events;
-
-public class KyuutieEventHandler
+namespace Kyuutie.Events
 {
-    private readonly IServiceProvider _services;
-    private readonly DiscordShardedClient _client;
-    private readonly IConfiguration _config;
-
-    public KyuutieEventHandler(IServiceProvider services, DiscordShardedClient client, IConfiguration config)
+    public class KyuutieEventHandler
     {
-        this._services = services;
-        this._client = client;
-        this._config = config;
-        this._client.GuildDownloadCompleted += OnGuildDownloadCompletedAsync;
-    }
+        private readonly DiscordShardedClient _client;
+        private readonly TwitchApi _twitchApi;
+        private readonly IConfiguration _config;
+        private bool _messageSent = false;
+        private bool _isCheckingStreams = false;
+        private readonly SemaphoreSlim _checkStreamSemaphore = new SemaphoreSlim(1, 1);
 
-#pragma warning disable CA1822
-    // ReSharper disable MemberCanBeMadeStatic.Global
-    public async Task OnErrorAsync(CommandsExtension commands, CommandErroredEventArgs e)
-        // ReSharper restore MemberCanBeMadeStatic.Global
-#pragma warning restore CA1822
-    {
-        commands.Client.Logger.LogError("An error has occurred: {Exception}", e.Exception);
-        if (e.Exception is ChecksFailedException)
+        public KyuutieEventHandler(DiscordShardedClient client, IConfiguration config)
         {
-            
-            await e.Context.RespondAsync("Only the bot owner can use these commands!");
-            await e.Context.DeferResponseAsync();
+            this._client = client;
+            this._config = config;
+            this._twitchApi = new TwitchApi($"{this._config["twitch-clientid"]}",
+                $"{this._config["twitch-authtoken"]}");
+
+            this._client.SessionCreated += OnSessionReadyAsync;
+            this._client.SessionResumed += OnSessionReadyAsync;
         }
-        else
+
+        private Task OnSessionReadyAsync(DiscordClient client, SessionReadyEventArgs e)
         {
-            await e.Context.RespondAsync(
-                $"An error has occurred, please report the following error on our discord:\n{e.Exception}");
-            await e.Context.DeferResponseAsync();
+            _ = StartStreamCheckAsync(client);
+            return Task.CompletedTask;
         }
-        
-    }
 
-    public async Task OnGuildDownloadCompletedAsync(DiscordClient client, GuildDownloadCompletedEventArgs e)
-    {
-        TwitchApi api = new($"{this._config["twitch-clientid"]}", $"{this._config["twitch-authtoken"]}");
+        private async Task StartStreamCheckAsync(DiscordClient client)
+        {
+            await _checkStreamSemaphore.WaitAsync();
+            try
+            {
+                if (!_isCheckingStreams)
+                {
+                    _isCheckingStreams = true;
+                    _ = CheckStreamsAsync(client);
+                }
+            }
+            finally
+            {
+                _checkStreamSemaphore.Release();
+            }
+        }
 
-        bool messageSent = false;
-        
-        Func<Task> checkStreams = async () =>
+        private async Task CheckStreamsAsync(DiscordClient client)
         {
             while (true)
             {
-                SearchChannels channel = await api.SearchChannelsAsync("MikyuuVT");
-               // Console.WriteLine($"Name: {channel.display_name}");
-               // Console.WriteLine($"Stream title: {channel.title}");
-               // Console.WriteLine($"Streamer is live: {channel.is_live}");
-            
-                if (channel.is_live  && messageSent is false)
+                SearchChannels channel = await this._twitchApi.SearchChannelsAsync("MikyuuVT");
+                Console.WriteLine($"Name: {channel.display_name}");
+                Console.WriteLine($"Stream title: {channel.title}");
+                Console.WriteLine($"Streamer is live: {channel.is_live}");
+
+                if (channel.is_live && !_messageSent)
                 {
-                                    
                     DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
-                        .WithAuthor($"{channel.display_name} is now live on Twitch!", $"https://www.twitch.tv/{channel.display_name}", $"{channel.thumbnail_url}")
+                        .WithAuthor($"{channel.display_name} is now live on Twitch!",
+                            $"https://www.twitch.tv/{channel.display_name}",
+                            $"{channel.thumbnail_url}")
                         .WithTitle($"{channel.title}")
                         .WithUrl($"https://twitch.tv/{channel.display_name}")
                         .WithColor(DiscordColor.Magenta)
@@ -76,28 +77,22 @@ public class KyuutieEventHandler
                         .AddComponents(new DiscordLinkButtonComponent(
                             $"https://www.twitch.tv/{channel.display_name}",
                             "Watch Stream"));
-                    
+
                     DiscordChannel streamChannel = await client.GetChannelAsync(1128276415155028104);
 
                     await streamChannel.SendMessageAsync("<@&1128276411845726283>");
                     await streamChannel.SendMessageAsync(builder);
 
-                    messageSent = true;
+                    _messageSent = true;
                 }
-                
-                if (!channel.is_live && messageSent)
+
+                if (!channel.is_live && _messageSent)
                 {
-                    messageSent = false;
+                    _messageSent = false;
                 }
-                
-                await Task.Delay(3000);
+
+                await Task.Delay(10000); // Adjust the delay as needed
             }
-        };
-
-        _ = checkStreams();
-
+        }
     }
-    
-
-    
 }
